@@ -145,6 +145,7 @@ exit 0
                 "FAKE_SYSTEMCTL_STATE": "active",
                 "MIHOMO_MAX_NODES": "80",
                 "MIHOMO_PLUGIN_DATA_DIR": str(root / "plugin-data"),
+                "MIHOMO_DIRECT_RULES_FILE": str(root / "etc-mihomo/noctalia/direct-rules.yaml"),
             }
         )
 
@@ -218,7 +219,7 @@ exit 0
         completed, listed = self.run_cli("direct-list")
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(len(listed["entries"]), 1)
-        provider = Path(self.env["MIHOMO_PLUGIN_DATA_DIR"]) / "direct-rules.yaml"
+        provider = Path(self.env["MIHOMO_DIRECT_RULES_FILE"])
         self.assertIn("DOMAIN-SUFFIX,example.com", provider.read_text(encoding="utf-8"))
 
         completed, removed = self.run_cli("direct-remove", added["entry"]["id"])

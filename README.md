@@ -80,6 +80,7 @@ border, blur, and theme colors.
 | `controller` | `http://127.0.0.1:9090` | Mihomo external controller URL. |
 | `unit` | `mihomo.service` | Systemd unit controlled by start/stop. |
 | `config_file` | `/etc/mihomo/config.yaml` | Config path used by the one-time direct-rule setup helper. |
+| `direct_rules_file` | `/etc/mihomo/noctalia/direct-rules.yaml` | User-writable rule-provider YAML under Mihomo's allowed config path. |
 | `max_nodes` | `80` | Maximum nodes returned to the panel. |
 | `show_label` | `true` | Show the selected node beside the bar glyph. |
 | `active_color` | `primary` | Widget color while Mihomo is active. |
@@ -140,12 +141,13 @@ you copy the exact setup command. It is equivalent to:
 ```sh
 sudo python3 scripts/configure-direct-rules.py \
   --config /etc/mihomo/config.yaml \
-  --rules-path ~/.local/state/noctalia/plugins/data/LyraVoid/mihomo-tun/direct-rules.yaml \
+  --rules-path /etc/mihomo/noctalia/direct-rules.yaml \
   --mihomo-bin /usr/bin/mihomo \
   --service mihomo.service
 ```
 
-The helper creates a timestamped config backup, inserts an idempotent
+The helper creates `/etc/mihomo/noctalia`, gives it to the invoking desktop
+user, writes an initial provider file, creates a timestamped config backup, inserts an idempotent
 `rule-providers.noctalia-direct` block plus a top-priority
 `RULE-SET,noctalia-direct,DIRECT` rule, validates with `mihomo -t`, and restores
 the backup if validation fails.
@@ -162,8 +164,8 @@ the backup if validation fails.
 - Starting and stopping a system service is a privileged operation. Configure
   systemd/polkit narrowly instead of granting broad passwordless access.
 - The optional direct-rule helper is the only root-required setup step. After
-  that, the panel only writes its own user-owned provider file and asks the
-  controller to refresh it.
+  that, the panel only writes the user-owned file under `/etc/mihomo/noctalia`
+  and asks the controller to refresh it.
 - The exit IP check sends requests to the endpoints configured in
   `scripts/mihomo-ctl.py`. Those requests follow the host's active routing and
   proxy rules.
