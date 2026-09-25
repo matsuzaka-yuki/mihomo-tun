@@ -39,6 +39,10 @@
     "config_file": {
       "label": "Mihomo 配置文件",
       "description": "可选的直连规则首次配置工具使用的路径"
+    },
+    "direct_rules_file": {
+      "label": "直连规则提供器文件",
+      "description": "位于 /etc/mihomo 下、由插件管理的 YAML 文件"
     }
   },
   "colors": {

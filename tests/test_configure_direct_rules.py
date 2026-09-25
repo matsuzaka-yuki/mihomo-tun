@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 import types
 import unittest
 from pathlib import Path
@@ -49,6 +50,17 @@ rules:
         once = module.render_config(source)
         twice = module.render_config(once)
         self.assertEqual(once, twice)
+
+    def test_prepares_provider_under_config_directory(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "config.yaml"
+            config.write_text("rules:\n  - MATCH,PROXY\n", encoding="utf-8")
+            rules_path = Path(tmp) / "noctalia/direct-rules.yaml"
+            module.args = types.SimpleNamespace(rules_path=str(rules_path))
+            module.prepare_rules_path(config)
+            self.assertTrue(rules_path.is_file())
+            self.assertIn("payload: []", rules_path.read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

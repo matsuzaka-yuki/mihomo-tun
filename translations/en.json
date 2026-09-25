@@ -39,6 +39,10 @@
     "config_file": {
       "label": "Mihomo config file",
       "description": "Path used by the optional direct-rule setup helper"
+    },
+    "direct_rules_file": {
+      "label": "Direct rule provider file",
+      "description": "YAML file under /etc/mihomo managed by the plugin"
     }
   },
   "colors": {

@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [1.1.1] - 2026-09-25
+
+### Fixed
+
+- Store the generated rule-provider YAML under `/etc/mihomo/noctalia`, which is
+  accepted by Mihomo's `SAFE_PATHS`.
+- Let the one-time setup helper create and own that directory as the invoking
+  desktop user.
+
 ## [1.1.0] - 2026-09-25
 
 ### Added

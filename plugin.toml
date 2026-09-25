@@ -3,7 +3,7 @@
 # standalone CLI; the Luau entries only collect state and render controls.
 id          = "LyraVoid/mihomo-tun"
 name        = "Mihomo TUN Control"
-version     = "1.1.0"
+version     = "1.1.1"
 plugin_api  = 14
 author      = "LyraVoid"
 license     = "MIT"
@@ -55,6 +55,14 @@ type            = "string"
 label_key       = "settings.config_file.label"
 description_key = "settings.config_file.description"
 default         = "/etc/mihomo/config.yaml"
+advanced        = true
+
+[[setting]]
+key             = "direct_rules_file"
+type            = "string"
+label_key       = "settings.direct_rules_file.label"
+description_key = "settings.direct_rules_file.description"
+default         = "/etc/mihomo/noctalia/direct-rules.yaml"
 advanced        = true
 
 [[setting]]

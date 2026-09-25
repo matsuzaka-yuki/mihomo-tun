@@ -42,7 +42,9 @@ def default_plugin_data_dir():
 
 PLUGIN_DATA_DIR = os.environ.get("MIHOMO_PLUGIN_DATA_DIR") or default_plugin_data_dir()
 DIRECT_STORE = os.path.join(PLUGIN_DATA_DIR, "direct-rules.json")
-DIRECT_PROVIDER_FILE = os.path.join(PLUGIN_DATA_DIR, "direct-rules.yaml")
+DIRECT_PROVIDER_FILE = os.environ.get(
+    "MIHOMO_DIRECT_RULES_FILE", "/etc/mihomo/noctalia/direct-rules.yaml"
+)
 DIRECT_PROVIDER_NAME = "noctalia-direct"
 # 出口 IP 回显端点，按顺序尝试（境外域名，确保会被规则送进代理）
 IP_ECHOES = [
@@ -178,9 +180,9 @@ def provider_exists():
 
 
 def sync_direct_provider(entries):
-    write_text_atomic(DIRECT_PROVIDER_FILE, direct_provider_text(entries))
     if not provider_exists():
         return False
+    write_text_atomic(DIRECT_PROVIDER_FILE, direct_provider_text(entries))
     api("/providers/rules/" + urllib.parse.quote(DIRECT_PROVIDER_NAME, safe=""), method="PUT")
     return True
 

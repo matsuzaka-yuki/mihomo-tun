@@ -28,8 +28,8 @@ This plugin can:
 - Run `systemctl start` and `systemctl stop` for the configured unit.
 - Place the controller secret on the Wayland clipboard when explicitly asked.
 - Launch the controller web UI through `xdg-open`.
-- Write its own managed direct-rule JSON/YAML files under the Noctalia plugin
-  data directory.
+- Write managed direct-rule metadata under the Noctalia plugin data directory
+  and the user-owned provider YAML under `/etc/mihomo/noctalia`.
 
 It does not:
 
