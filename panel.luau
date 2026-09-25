@@ -23,6 +23,10 @@ local subscription_name_input = ""
 local subscription_url_input = ""
 local subscription_input_rev = 0
 local subscription_delete_confirm = ""
+local spinner_frames = { "◐", "◓", "◑", "◒" }
+local spinner_index = 1
+local spinner_elapsed = 0
+local frame_tick_enabled = false
 
 local MODES = { "rule", "global", "direct" }
 
@@ -120,6 +124,12 @@ local function format_updated(value)
     return tr("panel.updated_at", { time = date .. " " .. clock })
   end
   return tr("panel.never_updated")
+end
+
+local function set_spinner_active(active)
+  if active == frame_tick_enabled then return end
+  frame_tick_enabled = active
+  panel.setNeedsFrameTick(active)
 end
 
 local function page_button(label, page, glyph)
@@ -457,7 +467,15 @@ local function status_line(rows)
     table.insert(rows, ui.row({ gap = 8, paddingH = 10, paddingV = 8,
                                 fill = "tertiary/0.10", border = "tertiary/0.32",
                                 borderWidth = 1, radius = 10, align = "center" }, {
-      ui.glyph({ name = "loader-2", size = 14, color = "tertiary" }),
+      ui.label({
+        text = spinner_frames[spinner_index],
+        fontSize = 16,
+        fontWeight = "bold",
+        color = "tertiary",
+        width = 18,
+        textAlign = "center",
+        maxLines = 1,
+      }),
       ui.label({ text = tr("panel.working"), fontSize = 12, color = "tertiary", maxLines = 1 }),
     }))
     return
@@ -476,8 +494,14 @@ local function status_line(rows)
   end
 end
 
+local function page_scroll(cards, key)
+  return {
+    ui.scroll({ key = key, flexGrow = 1, gap = 6, paddingH = 0 }, cards),
+  }
+end
+
 local function subscriptions_view()
-  local rows = {}
+  local cards = {}
   local providers = type(providerinfo) == "table" and providerinfo.providers or nil
   local provider_error = type(providerinfo) == "table" and providerinfo.error or ""
   local add_subscription = ui.button({
@@ -505,7 +529,7 @@ local function subscriptions_view()
     enabled = pending == "" and providers ~= nil and #providers > 0,
     onClick = function() send("provider-update", { "all" }, "provider") end,
   })
-  table.insert(rows, panel_card({
+  table.insert(cards, panel_card({
     section_title(tr("panel.subscriptions"), ui.row({ gap = 6, align = "center" }, {
       add_subscription,
       update_all,
@@ -513,7 +537,7 @@ local function subscriptions_view()
   }))
 
   if subscription_editor_open then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.label({
         text = subscription_edit_original ~= "" and tr("panel.edit_subscription")
           or tr("panel.add_subscription"),
@@ -595,28 +619,27 @@ local function subscriptions_view()
   end
 
   if providers == nil then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.row({ gap = 8, align = "center" }, {
         ui.glyph({ name = "loader-2", size = 16, color = "tertiary" }),
         ui.label({ text = tr("panel.loading"), fontSize = 13, color = "on_surface_variant" }),
       }),
     }, { flexGrow = 1 }))
-    return rows
+    return page_scroll(cards, "mihomo-provider-scroll")
   end
   if provider_error ~= "" then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.label({ text = tostring(provider_error), fontSize = 12, color = "error", maxLines = 3 }),
     }))
-    return rows
+    return page_scroll(cards, "mihomo-provider-scroll")
   end
   if #providers == 0 then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.label({ text = tr("panel.no_providers"), fontSize = 13, color = "on_surface_variant" }),
     }, { flexGrow = 1 }))
-    return rows
+    return page_scroll(cards, "mihomo-provider-scroll")
   end
 
-  local cards = {}
   for _, provider in ipairs(providers) do
     local provider_name = tostring(provider.name or "")
     local subscription = type(provider.subscription) == "table" and provider.subscription or {}
@@ -742,12 +765,11 @@ local function subscriptions_view()
     end
     table.insert(cards, panel_card(children))
   end
-  table.insert(rows, ui.scroll({ key = "mihomo-provider-scroll", flexGrow = 1, gap = 6 }, cards))
-  return rows
+  return page_scroll(cards, "mihomo-provider-scroll")
 end
 
 local function direct_view()
-  local rows = {}
+  local cards = {}
   local info = type(directinfo) == "table" and directinfo or {}
   local entries = type(info.entries) == "table" and info.entries or nil
   local configured = info.configured == true
@@ -761,7 +783,7 @@ local function direct_view()
     enabled = pending == "" and entries ~= nil and #entries > 0,
     onClick = function() send("direct-clear", nil, "direct") end,
   })
-  table.insert(rows, panel_card({
+  table.insert(cards, panel_card({
     section_title(tr("panel.direct_rules"), clear),
     ui.label({
       text = tr("panel.direct_help"),
@@ -809,7 +831,7 @@ local function direct_view()
   }))
 
   if not configured then
-    table.insert(rows, ui.row({
+    table.insert(cards, ui.row({
       gap = 8,
       paddingH = 10,
       paddingV = 9,
@@ -845,7 +867,7 @@ local function direct_view()
       }),
     }))
   else
-    table.insert(rows, ui.row({ gap = 7, paddingH = 10, paddingV = 7,
+    table.insert(cards, ui.row({ gap = 7, paddingH = 10, paddingV = 7,
                                 fill = "primary/0.10", border = "primary/0.28",
                                 borderWidth = 1, radius = 9, align = "center" }, {
       ui.glyph({ name = "circle-check", size = 15, color = "primary" }),
@@ -854,16 +876,16 @@ local function direct_view()
   end
 
   if entries == nil then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.label({ text = tr("panel.loading"), fontSize = 13, color = "on_surface_variant" }),
     }, { flexGrow = 1 }))
-    return rows
+    return page_scroll(cards, "mihomo-direct-scroll")
   end
   if #entries == 0 then
-    table.insert(rows, panel_card({
+    table.insert(cards, panel_card({
       ui.label({ text = tr("panel.direct_empty"), fontSize = 13, color = "on_surface_variant" }),
     }, { flexGrow = 1 }))
-    return rows
+    return page_scroll(cards, "mihomo-direct-scroll")
   end
 
   local items = {}
@@ -906,11 +928,12 @@ local function direct_view()
       }),
     }))
   end
-  table.insert(rows, ui.scroll({ key = "mihomo-direct-scroll", flexGrow = 1, gap = 5 }, items))
-  return rows
+  for _, item in ipairs(items) do table.insert(cards, item) end
+  return page_scroll(cards, "mihomo-direct-scroll")
 end
 
 function render()
+  set_spinner_active(pending ~= "")
   local rows = { navigation() }
   if view == "subscriptions" then
     local subscription_rows = subscriptions_view()
@@ -946,6 +969,7 @@ end
 
 function onClose()
   pending = ""
+  set_spinner_active(false)
   view = "main"
   direct_input = ""
   subscription_editor_open = false
@@ -963,6 +987,15 @@ noctalia.state.watch("delay", function(v) delayinfo = v; pending = ""; render() 
 noctalia.state.watch("action", function(v) lastaction = v; render() end)
 noctalia.state.watch("providers", function(v) providerinfo = v; pending = ""; render() end)
 noctalia.state.watch("direct", function(v) directinfo = v; pending = ""; render() end)
+
+function onFrameTick(delta)
+  if pending == "" then return end
+  spinner_elapsed += tonumber(delta) or 0
+  if spinner_elapsed < 120 then return end
+  spinner_elapsed = 0
+  spinner_index = spinner_index % #spinner_frames + 1
+  render()
+end
 
 function update()
   noctalia.setUpdateInterval(5000)

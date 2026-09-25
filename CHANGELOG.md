@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here.
 
+## [1.2.1] - 2026-09-26
+
+### Fixed
+
+- Align subscription and direct-rule list cards with the page header by removing
+  the scroll view's extra horizontal inset.
+- Replace the static processing glyph with a frame-based rotating spinner.
+
 ## [1.2.0] - 2026-09-25
 
 ### Added
