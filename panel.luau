@@ -40,6 +40,65 @@ local function short_node(n)
   return x
 end
 
+local function copy_table(value)
+  local result = {}
+  if type(value) == "table" then
+    for key, item in pairs(value) do result[key] = item end
+  end
+  return result
+end
+
+local function optimistic_select(name)
+  if type(groupview) == "table" then
+    local next_groupview = copy_table(groupview)
+    next_groupview.now = name
+    groupview = next_groupview
+  end
+  if type(mihomo) == "table" then
+    local next_mihomo = copy_table(mihomo)
+    next_mihomo.now = name
+    mihomo = next_mihomo
+  end
+end
+
+local function set_optimistic_direct_entries(entries)
+  local next_directinfo = type(directinfo) == "table" and copy_table(directinfo) or {}
+  next_directinfo.entries = entries
+  directinfo = next_directinfo
+end
+
+local function optimistic_direct_add(value)
+  local info = type(directinfo) == "table" and directinfo or {}
+  local source = type(info.entries) == "table" and info.entries or {}
+  local entries = {}
+  for index, entry in ipairs(source) do entries[index] = entry end
+  local display = tostring(value or "")
+  table.insert(entries, {
+    id = "pending:" .. display,
+    kind = display:match("^[%d%.]+$") and "ipv4" or "domain",
+    value = display,
+    display = display,
+    pending = true,
+  })
+  set_optimistic_direct_entries(entries)
+end
+
+local function optimistic_direct_remove(id)
+  local info = type(directinfo) == "table" and directinfo or {}
+  local source = type(info.entries) == "table" and info.entries or {}
+  local entries = {}
+  for _, entry in ipairs(source) do
+    if tostring(entry.id or "") ~= tostring(id or "") then
+      table.insert(entries, entry)
+    end
+  end
+  set_optimistic_direct_entries(entries)
+end
+
+local function optimistic_direct_clear()
+  set_optimistic_direct_entries({})
+end
+
 local function tr(key, subst)
   return noctalia.tr(key, subst)
 end
@@ -349,7 +408,10 @@ local function node_list(rows)
     }
     -- 这里总是“选用到当前正在查看的组”，切换查看目标请用上面的策略组按钮。
     if not is_current and pending == "" then
-      props.onClick = function() send("select", { view_group, name }, "select") end
+      props.onClick = function()
+        optimistic_select(name)
+        send("select", { view_group, name }, "select")
+      end
     end
     table.insert(items, ui.row(props, children))
   end
@@ -781,7 +843,10 @@ local function direct_view()
     controlSize = "sm",
     fontSize = 11,
     enabled = pending == "" and entries ~= nil and #entries > 0,
-    onClick = function() send("direct-clear", nil, "direct") end,
+    onClick = function()
+      optimistic_direct_clear()
+      send("direct-clear", nil, "direct")
+    end,
   })
   table.insert(cards, panel_card({
     section_title(tr("panel.direct_rules"), clear),
@@ -807,6 +872,7 @@ local function direct_view()
             local wanted = direct_input
             direct_input = ""
             direct_input_rev += 1
+            optimistic_direct_add(wanted)
             send("direct-add", { wanted }, "direct")
           end
         end,
@@ -823,6 +889,7 @@ local function direct_view()
             local wanted = direct_input
             direct_input = ""
             direct_input_rev += 1
+            optimistic_direct_add(wanted)
             send("direct-add", { wanted }, "direct")
           end
         end,
@@ -923,7 +990,9 @@ local function direct_view()
         controlSize = "sm",
         enabled = pending == "",
         onClick = function()
-          send("direct-remove", { tostring(entry.id or "") }, "direct")
+          local id = tostring(entry.id or "")
+          optimistic_direct_remove(id)
+          send("direct-remove", { id }, "direct")
         end,
       }),
     }))

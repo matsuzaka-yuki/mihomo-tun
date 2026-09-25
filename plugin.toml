@@ -3,7 +3,7 @@
 # standalone CLI; the Luau entries only collect state and render controls.
 id          = "LyraVoid/mihomo-tun"
 name        = "Mihomo TUN Control"
-version     = "1.2.1"
+version     = "1.2.2"
 plugin_api  = 18
 author      = "LyraVoid"
 license     = "MIT"

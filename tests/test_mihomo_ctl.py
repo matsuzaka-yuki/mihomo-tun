@@ -235,6 +235,8 @@ printf '%s\\n' '{"ok":true,"op":"upsert","name":"new-sub"}'
         self.assertEqual(completed.returncode, 0)
         self.assertTrue(added["configured"])
         self.assertEqual(added["entry"]["value"], "example.com")
+        self.assertEqual(len(added["entries"]), 1)
+        self.assertEqual(added["entries"][0]["value"], "example.com")
 
         completed, listed = self.run_cli("direct-list")
         self.assertEqual(completed.returncode, 0)
@@ -244,6 +246,7 @@ printf '%s\\n' '{"ok":true,"op":"upsert","name":"new-sub"}'
 
         completed, removed = self.run_cli("direct-remove", added["entry"]["id"])
         self.assertEqual(completed.returncode, 0)
+        self.assertEqual(removed["entries"], [])
         completed, listed = self.run_cli("direct-list")
         self.assertEqual(listed["entries"], [])
 

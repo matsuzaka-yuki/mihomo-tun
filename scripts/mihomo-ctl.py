@@ -355,7 +355,24 @@ def cmd_select(argv):
             body={"name": node})
     except Exception as exc:
         fail("切换节点失败：%s" % exc)
-    out({"ok": True, "group": group, "now": node, "message": "已切到 " + node})
+    result = {"ok": True, "group": group, "now": node, "message": "已切到 " + node}
+    try:
+        result["snapshot"] = group_snapshot(group)
+    except Exception:
+        pass
+    out(result)
+
+
+def group_snapshot(name):
+    node = api("/proxies/" + urllib.parse.quote(name, safe=""))
+    members = [item for item in (node.get("all") or []) if item not in BUILTIN]
+    return {
+        "ok": True,
+        "group": name,
+        "now": node.get("now", "") or "",
+        "nodes": members[:MAX_NODES],
+        "truncated": len(members) > MAX_NODES,
+    }
 
 
 def cmd_group(argv):
@@ -364,14 +381,12 @@ def cmd_group(argv):
         fail("group 需要 <组名>")
     name = argv[0]
     try:
-        node = api("/proxies/" + urllib.parse.quote(name, safe=""))
+        snapshot = group_snapshot(name)
     except urllib.error.HTTPError as exc:
         fail("组 %s 不存在或控制器返回 HTTP %s" % (name, exc.code))
     except Exception as exc:
         fail("读取组 %s 失败：%s" % (name, exc))
-    members = [n for n in (node.get("all") or []) if n not in BUILTIN]
-    out({"ok": True, "group": name, "now": node.get("now", "") or "",
-         "nodes": members[:MAX_NODES], "truncated": len(members) > MAX_NODES})
+    out(snapshot)
 
 
 def cmd_delay(argv):
@@ -565,9 +580,9 @@ def cmd_direct_add(argv):
              configured=provider_exists())
     out({
         "ok": True,
-        "configured": configured,
         "entry": entry,
         "message": "已添加直连规则" if configured else "规则已保存，等待首次配置 Mihomo 规则提供器",
+        **direct_snapshot(),
     })
 
 
@@ -585,7 +600,7 @@ def cmd_direct_remove(argv):
     except Exception as exc:
         fail("规则已删除，但刷新 rule-provider 失败：%s" % exc,
              configured=provider_exists())
-    out({"ok": True, "configured": configured, "message": "已删除直连规则"})
+    out({"ok": True, "message": "已删除直连规则", **direct_snapshot()})
 
 
 def cmd_direct_clear():
@@ -595,7 +610,7 @@ def cmd_direct_clear():
     except Exception as exc:
         fail("列表已清空，但刷新 rule-provider 失败：%s" % exc,
              configured=provider_exists())
-    out({"ok": True, "configured": configured, "message": "已清空直连规则"})
+    out({"ok": True, "message": "已清空直连规则", **direct_snapshot()})
 
 
 def cmd_direct_sync():
@@ -604,8 +619,8 @@ def cmd_direct_sync():
         configured = sync_direct_provider(entries)
     except Exception as exc:
         fail("刷新直连规则失败：%s" % exc, configured=provider_exists())
-    out({"ok": True, "configured": configured, "entries": entries,
-         "message": "直连规则已刷新" if configured else "尚未配置 Mihomo rule-provider"})
+    out({"ok": True, "message": "直连规则已刷新" if configured else "尚未配置 Mihomo rule-provider",
+         **direct_snapshot()})
 
 
 def cmd_ip():
