@@ -3,7 +3,7 @@
 # standalone CLI; the Luau entries only collect state and render controls.
 id          = "LyraVoid/mihomo-tun"
 name        = "Mihomo TUN Control"
-version     = "1.1.1"
+version     = "1.2.0"
 plugin_api  = 14
 author      = "LyraVoid"
 license     = "MIT"
@@ -129,7 +129,7 @@ entry = "shortcut.luau"
 [[panel]]
 id        = "panel"
 entry     = "panel.luau"
-width     = 540
-height    = 740
+width     = 600
+height    = 780
 placement = "floating"
 position  = "top_right"

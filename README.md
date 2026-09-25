@@ -6,6 +6,8 @@ main job is to start, stop, inspect, and safely operate the local service.
 
 ![Mihomo TUN Control panel](assets/screenshot.webp)
 
+![Subscription management](assets/subscriptions.webp)
+
 ## Why This Exists
 
 Most Mihomo integrations talk to the external controller and assume the core is
@@ -16,7 +18,8 @@ already running. This plugin also owns the local service lifecycle:
   Noctalia configuration.
 - Switch rule, global, and direct modes.
 - Browse proxy groups and select nodes.
-- Manage subscriptions: update providers, inspect node count, quota, and expiry.
+- Manage subscriptions: add, edit, rename, delete, update providers, and inspect
+  node count, quota, and expiry.
 - Add domains or IP networks to a managed DIRECT rule provider.
 - Run latency tests and update proxy providers.
 - Verify the effective exit IP through the active routing path.
@@ -70,6 +73,11 @@ niri msg action spawn-sh -- \
 The panel is floating by default so it inherits Noctalia's normal panel surface,
 border, blur, and theme colors.
 
+Subscription add/edit/delete changes the root-owned Mihomo config. The panel
+asks `pkexec` for a one-time authorization for that change, validates the
+candidate config, and restarts Mihomo. Updating an existing subscription uses
+the controller API and needs no privilege.
+
 ## Settings
 
 | Key | Default | Description |
@@ -99,6 +107,8 @@ python3 scripts/mihomo-ctl.py mode global
 python3 scripts/mihomo-ctl.py delay PROXY
 python3 scripts/mihomo-ctl.py providers
 python3 scripts/mihomo-ctl.py provider-update all
+python3 scripts/mihomo-ctl.py subscription-upsert backup 'https://example.com/subscription'
+python3 scripts/mihomo-ctl.py subscription-delete backup
 python3 scripts/mihomo-ctl.py direct-add example.com
 python3 scripts/mihomo-ctl.py direct-add 203.0.113.0/24
 python3 scripts/mihomo-ctl.py direct-list

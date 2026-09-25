@@ -19,6 +19,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -42,6 +43,7 @@ def default_plugin_data_dir():
 
 PLUGIN_DATA_DIR = os.environ.get("MIHOMO_PLUGIN_DATA_DIR") or default_plugin_data_dir()
 DIRECT_STORE = os.path.join(PLUGIN_DATA_DIR, "direct-rules.json")
+SUBSCRIPTION_OP_FILE = os.path.join(PLUGIN_DATA_DIR, "subscription-op.json")
 DIRECT_PROVIDER_FILE = os.environ.get(
     "MIHOMO_DIRECT_RULES_FILE", "/etc/mihomo/noctalia/direct-rules.yaml"
 )
@@ -120,6 +122,7 @@ def write_json_atomic(path, payload):
     with open(tmp, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, indent=2, sort_keys=True)
         fh.write("\n")
+    os.chmod(tmp, 0o600)
     os.replace(tmp, path)
 
 
@@ -454,6 +457,70 @@ def cmd_provider_update(argv):
     out({"ok": True, "provider": name, "message": "订阅已触发更新"})
 
 
+def apply_subscription_change(op):
+    pkexec = os.environ.get("MIHOMO_PKEXEC") or shutil.which("pkexec")
+    if not pkexec:
+        fail("找不到 pkexec，无法执行需要管理员授权的配置更新")
+    helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apply-subscription-change.py")
+    write_json_atomic(SUBSCRIPTION_OP_FILE, op)
+    command = [
+        pkexec,
+        sys.executable,
+        helper,
+        "--config", CONFIG_FILE,
+        "--op-file", SUBSCRIPTION_OP_FILE,
+        "--mihomo-bin", os.environ.get("MIHOMO_BIN", "/usr/bin/mihomo"),
+        "--service", UNIT,
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        fail("管理员配置操作超时")
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip()
+        fail(detail[-1000:] or "管理员配置操作被取消或失败")
+    try:
+        return json.loads(completed.stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError):
+        fail("配置助手没有返回有效结果")
+
+
+def cmd_subscription_upsert(argv):
+    if len(argv) < 2:
+        fail("subscription-upsert 需要 <名称> <订阅地址> [原名称]")
+    name, url = argv[0], argv[1]
+    original_name = argv[2] if len(argv) > 2 else ""
+    result = apply_subscription_change({
+        "op": "upsert",
+        "name": name,
+        "url": url,
+        "original_name": original_name,
+    })
+    out({
+        "ok": True,
+        "name": result.get("name", name),
+        "message": "订阅已保存，Mihomo 已重新加载",
+    })
+
+
+def cmd_subscription_delete(argv):
+    if not argv:
+        fail("subscription-delete 需要 <名称>")
+    name = argv[0]
+    result = apply_subscription_change({"op": "delete", "name": name})
+    out({
+        "ok": True,
+        "name": result.get("name", name),
+        "message": "订阅已删除，Mihomo 已重新加载",
+    })
+
+
 def direct_setup_command():
     helper = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configure-direct-rules.py")
     return "sudo python3 %s --config %s --rules-path %s --mihomo-bin /usr/bin/mihomo --service %s" % (
@@ -575,6 +642,7 @@ def main():
     if not argv or argv[0] in ("-h", "--help"):
         out({"ok": True, "usage": "watch|status|group <g>|toggle|mode <m>|select <g> <n>|delay [g]"
                                   "|providers|provider-update <name|all>|update-provider [name]"
+                                  "|subscription-upsert <name> <url> [old]|subscription-delete <name>"
                                   "|direct-list|direct-add <domain|ip>|direct-remove <id>|direct-clear|direct-sync"
                                   "|ip|secret"})
     cmd, rest = argv[0], argv[1:]
@@ -589,6 +657,8 @@ def main():
         "providers": lambda: cmd_providers(),
         "provider-update": lambda: cmd_provider_update(rest),
         "update-provider": lambda: cmd_update_provider(rest),
+        "subscription-upsert": lambda: cmd_subscription_upsert(rest),
+        "subscription-delete": lambda: cmd_subscription_delete(rest),
         "direct-list": lambda: cmd_direct_list(),
         "direct-add": lambda: cmd_direct_add(rest),
         "direct-remove": lambda: cmd_direct_remove(rest),

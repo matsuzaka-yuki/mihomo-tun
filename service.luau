@@ -122,6 +122,17 @@ local function dispatch(method, args)
       notify_result(d)
       run("providers", "providers")
     end)
+  elseif method == "subscription-upsert" then
+    run("subscription-upsert " .. q(args[1] or "") .. " " .. q(args[2] or "") .. " " .. q(args[3] or ""),
+      "action", function(d)
+        notify_result(d)
+        run("providers", "providers")
+      end)
+  elseif method == "subscription-delete" then
+    run("subscription-delete " .. q(args[1] or ""), "action", function(d)
+      notify_result(d)
+      run("providers", "providers")
+    end)
   elseif method == "direct-list" then
     run("direct-list", "direct")
   elseif method == "direct-add" then

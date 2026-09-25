@@ -30,10 +30,12 @@ cp "$ROOT/service.luau" "$DEST/service.luau"
 cp "$ROOT/shortcut.luau" "$DEST/shortcut.luau"
 cp "$ROOT/scripts/mihomo-ctl.py" "$DEST/scripts/mihomo-ctl.py"
 cp "$ROOT/scripts/configure-direct-rules.py" "$DEST/scripts/configure-direct-rules.py"
+cp "$ROOT/scripts/apply-subscription-change.py" "$DEST/scripts/apply-subscription-change.py"
 cp "$ROOT/translations/en.json" "$DEST/translations/en.json"
 cp "$ROOT/translations/zh-Hans.json" "$DEST/translations/zh-Hans.json"
 chmod 755 "$DEST/scripts/mihomo-ctl.py"
 chmod 755 "$DEST/scripts/configure-direct-rules.py"
+chmod 755 "$DEST/scripts/apply-subscription-change.py"
 
 if ! noctalia msg plugins source list 2>/dev/null | grep -q '^localdev '; then
   noctalia msg plugins source add localdev path "$SOURCE_DIR"

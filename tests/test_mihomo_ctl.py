@@ -134,6 +134,14 @@ exit 0
             encoding="utf-8",
         )
         systemctl.chmod(0o755)
+        pkexec = bin_dir / "pkexec"
+        pkexec.write_text(
+            """#!/bin/sh
+printf '%s\\n' '{"ok":true,"op":"upsert","name":"new-sub"}'
+""",
+            encoding="utf-8",
+        )
+        pkexec.chmod(0o755)
         self.env = os.environ.copy()
         self.env.update(
             {
@@ -209,6 +217,18 @@ exit 0
         self.assertEqual(completed.returncode, 0)
         request = next(item for item in self.server.requests if item[0] == "PUT" and item[1] == "/providers/proxies/airport")
         self.assertEqual(request[0], "PUT")
+
+    def test_subscription_upsert_uses_pkexec_helper(self):
+        completed, payload = self.run_cli(
+            "subscription-upsert",
+            "new-sub",
+            "https://example.com/sub",
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(payload["name"], "new-sub")
+        op_file = Path(self.env["MIHOMO_PLUGIN_DATA_DIR"]) / "subscription-op.json"
+        self.assertTrue(op_file.is_file())
+        self.assertIn("https://example.com/sub", op_file.read_text(encoding="utf-8"))
 
     def test_direct_add_list_sync_and_remove(self):
         completed, added = self.run_cli("direct-add", " example.com ")

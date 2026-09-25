@@ -26,6 +26,8 @@ This plugin can:
 - Read a configured local secret file.
 - Send authenticated requests to the configured Mihomo controller.
 - Run `systemctl start` and `systemctl stop` for the configured unit.
+- Request `pkexec` authorization to apply add/edit/delete changes to
+  `proxy-providers` in `/etc/mihomo/config.yaml`.
 - Place the controller secret on the Wayland clipboard when explicitly asked.
 - Launch the controller web UI through `xdg-open`.
 - Write managed direct-rule metadata under the Noctalia plugin data directory
@@ -42,3 +44,7 @@ It does not:
 The optional `configure-direct-rules.py` helper does modify the Mihomo config,
 but it is run explicitly with root privileges. It creates a timestamped backup,
 validates the candidate config, and restores the backup on failure.
+
+`apply-subscription-change.py` follows the same rule: it is invoked through
+`pkexec`, edits only the named `proxy-providers` entry, writes a timestamped
+backup, validates with `mihomo -t`, and restores the backup on failure.
