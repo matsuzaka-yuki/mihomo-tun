@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [1.2.2] - 2026-09-26
+
+### Fixed
+
+- Update the selected node marker, panel header, and direct-rule list
+  optimistically so the UI changes on click without reopening the panel.
+- Return fresh group and direct-rule snapshots with mutation responses, then
+  fall back to a reload only when an operation fails.
+
 ## [1.2.1] - 2026-09-26
 
 ### Fixed

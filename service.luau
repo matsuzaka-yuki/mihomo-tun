@@ -80,6 +80,15 @@ local function after_action(data)
   run("watch", "mihomo")     -- 立刻刷新状态，不等下一个轮询周期
 end
 
+local function after_direct_action(data)
+  notify_result(data)
+  if type(data) == "table" and data.ok and type(data.entries) == "table" then
+    noctalia.state.set("direct", data)
+  else
+    run("direct-list", "direct")
+  end
+end
+
 -- 动作分发：state("cmd") 与 `noctalia msg plugin ...` 的 onIpc 共用这一份
 local function dispatch(method, args)
   args = args or {}
@@ -106,8 +115,15 @@ local function dispatch(method, args)
       run("status", "detail")
     end)
   elseif method == "select" then
-    run("select " .. q(args[1] or "PROXY") .. " " .. q(args[2] or ""), "action", function(d)
-      after_action(d)
+    local selected_group = args[1] or "PROXY"
+    run("select " .. q(selected_group) .. " " .. q(args[2] or ""), "action", function(d)
+      notify_result(d)
+      if type(d) == "table" and type(d.snapshot) == "table" then
+        noctalia.state.set("group", d.snapshot)
+      else
+        run("group " .. q(selected_group), "group")
+      end
+      run("watch", "mihomo")
       run("status", "detail")
     end)
   elseif method == "update-provider" then
@@ -137,23 +153,19 @@ local function dispatch(method, args)
     run("direct-list", "direct")
   elseif method == "direct-add" then
     run("direct-add " .. q(args[1] or ""), "action", function(d)
-      notify_result(d)
-      run("direct-list", "direct")
+      after_direct_action(d)
     end)
   elseif method == "direct-remove" then
     run("direct-remove " .. q(args[1] or ""), "action", function(d)
-      notify_result(d)
-      run("direct-list", "direct")
+      after_direct_action(d)
     end)
   elseif method == "direct-clear" then
     run("direct-clear", "action", function(d)
-      notify_result(d)
-      run("direct-list", "direct")
+      after_direct_action(d)
     end)
   elseif method == "direct-sync" then
     run("direct-sync", "action", function(d)
-      notify_result(d)
-      run("direct-list", "direct")
+      after_direct_action(d)
     end)
   elseif method == "secret" then
     -- 面板的"复制密钥"按钮：结果里带密钥，所以复制后立刻清掉 state，别留在内存里
