@@ -1,0 +1,88 @@
+{
+  "settings": {
+    "refresh_ms": {
+      "label": "刷新间隔（毫秒）",
+      "description": "后台服务轮询本机 mihomo API 的频率"
+    },
+    "python_bin": {
+      "label": "Python 解释器",
+      "description": "用于运行 scripts/mihomo-ctl.py 的解释器"
+    },
+    "secret_file": {
+      "label": "控制器密钥文件",
+      "description": "mihomo 外部控制器 secret 的路径（需当前用户可读）"
+    },
+    "controller": {
+      "label": "控制器地址",
+      "description": "mihomo 外部控制器地址，例如 http://127.0.0.1:9090"
+    },
+    "max_nodes": {
+      "label": "单次返回节点上限",
+      "description": "限制后端一次快照返回的节点行数"
+    },
+    "show_label": {
+      "label": "显示节点名",
+      "description": "在图标旁显示当前节点（关闭则只显示图标）"
+    },
+    "active_color": {
+      "label": "开启时的颜色",
+      "description": "代理运行中图标的颜色"
+    },
+    "inactive_color": {
+      "label": "关闭时的颜色",
+      "description": "代理关闭时图标的颜色"
+    },
+    "unit": {
+      "label": "systemd 单元",
+      "description": "要启停的 systemd 单元（默认 mihomo.service）"
+    }
+  },
+  "colors": {
+    "primary": "主题主色",
+    "secondary": "主题次色",
+    "tertiary": "主题第三色",
+    "on_surface": "默认文字色",
+    "on_surface_variant": "弱化文字色",
+    "outline": "描边色",
+    "error": "错误色"
+  },
+  "widget": {
+    "on": "代理已开启",
+    "off": "已关闭",
+    "unknown": "代理",
+    "working": "处理中…",
+    "tooltip_on": "代理已开启 — {node}\n左键关闭 · 右键管理",
+    "tooltip_off": "代理已关闭（直连）\n左键开启 · 右键管理"
+  },
+  "shortcut": {
+    "on": "代理已开启",
+    "off": "代理已关闭"
+  },
+  "panel": {
+    "title": "Mihomo TUN Control",
+    "running": "代理已开启",
+    "stopped": "代理已关闭",
+    "start": "开启",
+    "stop": "关闭",
+    "exit_ip": "出口 IP",
+    "check_ip": "检测",
+    "unknown": "未知",
+    "mode": "模式",
+    "mode_rule": "规则",
+    "mode_global": "全局",
+    "mode_direct": "直连",
+    "groups": "策略组",
+    "nodes": "节点",
+    "loading": "加载中…",
+    "refresh": "刷新",
+    "no_nodes": "该策略组没有可选节点",
+    "truncated": "仅列出前 {count} 项",
+    "test_delay": "测速",
+    "web_panel": "Web 面板",
+    "copy_secret": "复制密钥",
+    "update_provider": "更新订阅",
+    "working": "处理中…",
+    "copied": "已把控制器密钥复制到剪贴板",
+    "secret_failed": "读不到控制器密钥"
+  }
+}

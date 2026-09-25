@@ -1,0 +1,119 @@
+# Mihomo TUN Control — Noctalia plugin
+# A local systemd/TUN control surface for mihomo. The Python helper is a
+# standalone CLI; the Luau entries only collect state and render controls.
+id          = "LyraVoid/mihomo-tun"
+name        = "Mihomo TUN Control"
+version     = "1.0.0"
+plugin_api  = 14
+author      = "LyraVoid"
+license     = "MIT"
+icon        = "shield-lock"
+description = "Control a local systemd-managed mihomo TUN service, proxy mode, nodes, subscriptions, and exit IP."
+tags        = ["bar", "panel", "shortcut", "service", "network", "system", "privacy"]
+dependencies = ["python3", "systemctl"]
+
+[[setting]]
+key             = "refresh_ms"
+type            = "int"
+label_key       = "settings.refresh_ms.label"
+description_key = "settings.refresh_ms.description"
+default         = 5000
+min             = 1000
+max             = 60000
+
+[[setting]]
+key             = "python_bin"
+type            = "string"
+label_key       = "settings.python_bin.label"
+description_key = "settings.python_bin.description"
+default         = "python3"
+
+[[setting]]
+key             = "secret_file"
+type            = "string"
+label_key       = "settings.secret_file.label"
+description_key = "settings.secret_file.description"
+default         = "/etc/mihomo/.controller-secret"
+
+[[setting]]
+key             = "controller"
+type            = "string"
+label_key       = "settings.controller.label"
+description_key = "settings.controller.description"
+default         = "http://127.0.0.1:9090"
+
+[[setting]]
+key             = "unit"
+type            = "string"
+label_key       = "settings.unit.label"
+description_key = "settings.unit.description"
+default         = "mihomo.service"
+
+[[setting]]
+key             = "max_nodes"
+type            = "int"
+label_key       = "settings.max_nodes.label"
+description_key = "settings.max_nodes.description"
+default         = 80
+min             = 5
+max             = 200
+advanced        = true
+
+# 后台服务：本插件唯一的子进程拥有者，负责轮询与执行动作
+[[service]]
+id    = "backend"
+entry = "service.luau"
+
+# 状态栏小部件：左键开关，右键开面板
+[[widget]]
+id    = "bar"
+entry = "widget.luau"
+
+  [widget.actions]
+  right = "panel-toggle LyraVoid/mihomo-tun:panel"
+
+  [[widget.setting]]
+  key             = "show_label"
+  type            = "bool"
+  label_key       = "settings.show_label.label"
+  description_key = "settings.show_label.description"
+  default         = true
+
+  [[widget.setting]]
+  key             = "active_color"
+  type            = "select"
+  label_key       = "settings.active_color.label"
+  description_key = "settings.active_color.description"
+  default         = "primary"
+  options = [
+    { value = "primary", label_key = "colors.primary" },
+    { value = "secondary", label_key = "colors.secondary" },
+    { value = "tertiary", label_key = "colors.tertiary" },
+    { value = "on_surface", label_key = "colors.on_surface" }
+  ]
+
+  [[widget.setting]]
+  key             = "inactive_color"
+  type            = "select"
+  label_key       = "settings.inactive_color.label"
+  description_key = "settings.inactive_color.description"
+  default         = "on_surface_variant"
+  options = [
+    { value = "on_surface_variant", label_key = "colors.on_surface_variant" },
+    { value = "outline", label_key = "colors.outline" },
+    { value = "error", label_key = "colors.error" }
+  ]
+
+# 控制中心快捷开关
+[[shortcut]]
+id    = "toggle"
+entry = "shortcut.luau"
+
+# 管理面板
+[[panel]]
+id        = "panel"
+entry     = "panel.luau"
+width     = 500
+height    = 700
+placement = "floating"
+position  = "top_right"

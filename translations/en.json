@@ -1,0 +1,88 @@
+{
+  "settings": {
+    "refresh_ms": {
+      "label": "Refresh interval (ms)",
+      "description": "How often the background service polls the local mihomo API"
+    },
+    "python_bin": {
+      "label": "Python binary",
+      "description": "Interpreter used to run scripts/mihomo-ctl.py"
+    },
+    "secret_file": {
+      "label": "Controller secret file",
+      "description": "Path to the mihomo external-controller secret (must be readable by your user)"
+    },
+    "controller": {
+      "label": "Controller address",
+      "description": "mihomo external controller, e.g. http://127.0.0.1:9090"
+    },
+    "max_nodes": {
+      "label": "Max nodes returned",
+      "description": "Caps how many node rows the backend returns in one snapshot"
+    },
+    "show_label": {
+      "label": "Show node name",
+      "description": "Show the selected node next to the icon (off = icon only)"
+    },
+    "active_color": {
+      "label": "Color when running",
+      "description": "Glyph color while the tunnel is up"
+    },
+    "inactive_color": {
+      "label": "Color when stopped",
+      "description": "Glyph color while the tunnel is down"
+    },
+    "unit": {
+      "label": "systemd unit",
+      "description": "systemd unit to toggle (default mihomo.service)"
+    }
+  },
+  "colors": {
+    "primary": "Primary",
+    "secondary": "Secondary",
+    "tertiary": "Tertiary",
+    "on_surface": "Default text",
+    "on_surface_variant": "Muted text",
+    "outline": "Outline",
+    "error": "Error"
+  },
+  "widget": {
+    "on": "Proxy on",
+    "off": "Proxy off",
+    "unknown": "Proxy",
+    "working": "Working…",
+    "tooltip_on": "Proxy is ON — {node}\nLeft click: turn off · Right click: manage",
+    "tooltip_off": "Proxy is OFF (direct)\nLeft click: turn on · Right click: manage"
+  },
+  "shortcut": {
+    "on": "Proxy on",
+    "off": "Proxy off"
+  },
+  "panel": {
+    "title": "Mihomo TUN Control",
+    "running": "Proxy is ON",
+    "stopped": "Proxy is OFF",
+    "start": "Turn on",
+    "stop": "Turn off",
+    "exit_ip": "Exit IP",
+    "check_ip": "Check",
+    "unknown": "unknown",
+    "mode": "Mode",
+    "mode_rule": "Rule",
+    "mode_global": "Global",
+    "mode_direct": "Direct",
+    "groups": "Policy groups",
+    "nodes": "Nodes",
+    "loading": "Loading…",
+    "refresh": "Refresh",
+    "no_nodes": "No selectable nodes in this group",
+    "truncated": "Only the first {count} entries are listed",
+    "test_delay": "Test latency",
+    "web_panel": "Web panel",
+    "copy_secret": "Copy secret",
+    "update_provider": "Update subscription",
+    "working": "Working…",
+    "copied": "Controller secret copied to clipboard",
+    "secret_failed": "Could not read the controller secret"
+  }
+}

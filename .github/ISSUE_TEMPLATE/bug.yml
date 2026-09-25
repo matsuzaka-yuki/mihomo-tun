@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible problem.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      description: Include exact commands and redact all secrets.
+    validations:
+      required: true
+  - type: input
+    id: noctalia
+    attributes:
+      label: Noctalia version
+    validations:
+      required: true
+  - type: input
+    id: mihomo
+    attributes:
+      label: Mihomo version
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Redact controller secrets and subscription URLs.
