@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here.
 
+## [1.2.0] - 2026-09-25
+
+### Added
+
+- Add, edit, rename, and delete managed subscriptions from the subscription
+  page.
+- A focused `apply-subscription-change.py` helper used through `pkexec` for
+  each privileged subscription change.
+- Confirmation controls for provider deletion.
+
+### Changed
+
+- Align subscription and direct-rule pages to the same full-width card layout.
+- Increase the floating panel to `600 × 780`.
+
 ## [1.1.1] - 2026-09-25
 
 ### Fixed

@@ -32,6 +32,7 @@ class ManifestTests(unittest.TestCase):
             "shortcut.luau",
             "scripts/mihomo-ctl.py",
             "scripts/configure-direct-rules.py",
+            "scripts/apply-subscription-change.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 

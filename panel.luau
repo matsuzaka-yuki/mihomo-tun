@@ -17,6 +17,12 @@ local pending = ""
 local nonce = 0
 local direct_input = ""
 local direct_input_rev = 0
+local subscription_editor_open = false
+local subscription_edit_original = ""
+local subscription_name_input = ""
+local subscription_url_input = ""
+local subscription_input_rev = 0
+local subscription_delete_confirm = ""
 
 local MODES = { "rule", "global", "direct" }
 
@@ -474,6 +480,22 @@ local function subscriptions_view()
   local rows = {}
   local providers = type(providerinfo) == "table" and providerinfo.providers or nil
   local provider_error = type(providerinfo) == "table" and providerinfo.error or ""
+  local add_subscription = ui.button({
+    text = tr("panel.add_subscription"),
+    glyph = "plus",
+    variant = "primary",
+    controlSize = "sm",
+    fontSize = 12,
+    enabled = pending == "",
+    onClick = function()
+      subscription_editor_open = true
+      subscription_edit_original = ""
+      subscription_name_input = ""
+      subscription_url_input = ""
+      subscription_input_rev += 1
+      render()
+    end,
+  })
   local update_all = ui.button({
     text = tr("panel.update_all"),
     glyph = "refresh",
@@ -484,8 +506,93 @@ local function subscriptions_view()
     onClick = function() send("provider-update", { "all" }, "provider") end,
   })
   table.insert(rows, panel_card({
-    section_title(tr("panel.subscriptions"), update_all),
+    section_title(tr("panel.subscriptions"), ui.row({ gap = 6, align = "center" }, {
+      add_subscription,
+      update_all,
+    })),
   }))
+
+  if subscription_editor_open then
+    table.insert(rows, panel_card({
+      ui.label({
+        text = subscription_edit_original ~= "" and tr("panel.edit_subscription")
+          or tr("panel.add_subscription"),
+        fontSize = 13,
+        fontWeight = "semibold",
+        color = "on_surface",
+        maxLines = 1,
+      }),
+      ui.input({
+        key = "subscription-name-" .. tostring(subscription_input_rev),
+        value = subscription_name_input,
+        placeholder = tr("panel.subscription_name"),
+        fontSize = 12,
+        controlSize = "sm",
+        enabled = pending == "",
+        onChange = function(value) subscription_name_input = tostring(value or "") end,
+      }),
+      ui.input({
+        key = "subscription-url-" .. tostring(subscription_input_rev),
+        value = subscription_url_input,
+        placeholder = tr("panel.subscription_url"),
+        fontSize = 12,
+        controlSize = "sm",
+        enabled = pending == "",
+        onChange = function(value) subscription_url_input = tostring(value or "") end,
+        onSubmit = function(value)
+          subscription_url_input = tostring(value or "")
+          if subscription_name_input ~= "" and subscription_url_input ~= "" then
+            local name = subscription_name_input
+            local url = subscription_url_input
+            local original = subscription_edit_original
+            subscription_editor_open = false
+            subscription_edit_original = ""
+            subscription_name_input = ""
+            subscription_url_input = ""
+            subscription_input_rev += 1
+            send("subscription-upsert", { name, url, original }, "subscription")
+          end
+        end,
+      }),
+      ui.row({ gap = 6, align = "stretch" }, {
+        ui.button({
+          text = tr("panel.save"),
+          glyph = "check",
+          variant = "primary",
+          controlSize = "sm",
+          fontSize = 12,
+          flexGrow = 1,
+          enabled = pending == "" and subscription_name_input ~= "" and subscription_url_input ~= "",
+          onClick = function()
+            local name = subscription_name_input
+            local url = subscription_url_input
+            local original = subscription_edit_original
+            subscription_editor_open = false
+            subscription_edit_original = ""
+            subscription_name_input = ""
+            subscription_url_input = ""
+            subscription_input_rev += 1
+            send("subscription-upsert", { name, url, original }, "subscription")
+          end,
+        }),
+        ui.button({
+          text = tr("panel.cancel"),
+          variant = "ghost",
+          controlSize = "sm",
+          fontSize = 12,
+          flexGrow = 1,
+          onClick = function()
+            subscription_editor_open = false
+            subscription_edit_original = ""
+            subscription_name_input = ""
+            subscription_url_input = ""
+            subscription_input_rev += 1
+            render()
+          end,
+        }),
+      }),
+    }))
+  end
 
   if providers == nil then
     table.insert(rows, panel_card({
@@ -511,15 +618,77 @@ local function subscriptions_view()
 
   local cards = {}
   for _, provider in ipairs(providers) do
+    local provider_name = tostring(provider.name or "")
     local subscription = type(provider.subscription) == "table" and provider.subscription or {}
     local used = (tonumber(subscription.upload) or 0) + (tonumber(subscription.download) or 0)
     local total = tonumber(subscription.total) or 0
     local expire = tonumber(subscription.expire) or 0
+    local actions = {}
+    if subscription_delete_confirm == provider_name then
+      table.insert(actions, ui.button({
+        glyph = "check",
+        tooltip = tr("panel.delete_confirm"),
+        variant = "destructive",
+        controlSize = "sm",
+        enabled = pending == "",
+        onClick = function()
+          subscription_delete_confirm = ""
+          send("subscription-delete", { provider_name }, "subscription")
+        end,
+      }))
+      table.insert(actions, ui.button({
+        glyph = "close",
+        tooltip = tr("panel.cancel"),
+        variant = "ghost",
+        controlSize = "sm",
+        onClick = function()
+          subscription_delete_confirm = ""
+          render()
+        end,
+      }))
+    else
+      table.insert(actions, ui.button({
+        glyph = "refresh",
+        tooltip = tr("panel.refresh"),
+        variant = "ghost",
+        controlSize = "sm",
+        enabled = pending == "",
+        onClick = function()
+          send("provider-update", { provider_name }, "provider")
+        end,
+      }))
+      table.insert(actions, ui.button({
+        glyph = "pencil",
+        tooltip = tr("panel.edit_subscription"),
+        variant = "ghost",
+        controlSize = "sm",
+        enabled = pending == "",
+        onClick = function()
+          subscription_editor_open = true
+          subscription_edit_original = provider_name
+          subscription_name_input = provider_name
+          subscription_url_input = ""
+          subscription_input_rev += 1
+          render()
+        end,
+      }))
+      table.insert(actions, ui.button({
+        glyph = "trash",
+        tooltip = tr("panel.delete"),
+        variant = "ghost",
+        controlSize = "sm",
+        enabled = pending == "",
+        onClick = function()
+          subscription_delete_confirm = provider_name
+          render()
+        end,
+      }))
+    end
     local children = {
       ui.row({ gap = 8, align = "center" }, {
         ui.column({ gap = 2, flexGrow = 1 }, {
           ui.label({
-            text = tostring(provider.name or ""),
+            text = provider_name,
             fontSize = 14,
             fontWeight = "semibold",
             color = "on_surface",
@@ -532,17 +701,7 @@ local function subscriptions_view()
             maxLines = 1,
           }),
         }),
-        ui.button({
-          text = tr("panel.refresh"),
-          glyph = "refresh",
-          variant = "ghost",
-          controlSize = "sm",
-          fontSize = 11,
-          enabled = pending == "",
-          onClick = function()
-            send("provider-update", { tostring(provider.name or "") }, "provider")
-          end,
-        }),
+        ui.row({ gap = 4, align = "center" }, actions),
       }),
       ui.label({
         text = format_updated(provider.updated_at),
@@ -789,6 +948,11 @@ function onClose()
   pending = ""
   view = "main"
   direct_input = ""
+  subscription_editor_open = false
+  subscription_edit_original = ""
+  subscription_name_input = ""
+  subscription_url_input = ""
+  subscription_delete_confirm = ""
 end
 
 noctalia.state.watch("detail", function(v) detail = v; pending = ""; render() end)
