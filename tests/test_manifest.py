@@ -31,6 +31,7 @@ class ManifestTests(unittest.TestCase):
             "service.luau",
             "shortcut.luau",
             "scripts/mihomo-ctl.py",
+            "scripts/configure-direct-rules.py",
         ):
             self.assertTrue((ROOT / relative).is_file(), relative)
 

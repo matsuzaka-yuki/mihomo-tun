@@ -28,6 +28,8 @@ This plugin can:
 - Run `systemctl start` and `systemctl stop` for the configured unit.
 - Place the controller secret on the Wayland clipboard when explicitly asked.
 - Launch the controller web UI through `xdg-open`.
+- Write its own managed direct-rule JSON/YAML files under the Noctalia plugin
+  data directory.
 
 It does not:
 
@@ -36,3 +38,7 @@ It does not:
 - Install a setuid helper.
 - Open a network listener.
 - Modify `/etc/mihomo`, firewall rules, or routing policy.
+
+The optional `configure-direct-rules.py` helper does modify the Mihomo config,
+but it is run explicitly with root privileges. It creates a timestamped backup,
+validates the candidate config, and restores the backup on failure.
