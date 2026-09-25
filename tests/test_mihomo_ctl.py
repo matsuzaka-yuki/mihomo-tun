@@ -58,6 +58,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json({"type": "Selector", "now": "AUTO", "all": ["AUTO", "node-a", "DIRECT"]})
         elif path == "/proxies/AUTO":
             self._json({"type": "URLTest", "now": "node-a", "all": ["node-a"]})
+        elif path == "/providers/proxies":
+            self._json(
+                {
+                    "providers": {
+                        "airport": {
+                            "name": "airport",
+                            "type": "Proxy",
+                            "updatedAt": "2026-09-25T22:02:29+08:00",
+                            "subscriptionInfo": {
+                                "Upload": 100,
+                                "Download": 200,
+                                "Total": 1000,
+                                "Expire": 1792321706,
+                            },
+                            "proxies": [{"name": "node-a"}],
+                        }
+                    }
+                }
+            )
+        elif path == "/providers/rules":
+            self._json({"providers": {"noctalia-direct": {"name": "noctalia-direct"}}})
         elif path == "/group/PROXY/delay":
             query = parse_qs(parsed.query)
             self.assert_url = query.get("url", [""])[0]
@@ -123,6 +144,7 @@ exit 0
                 "FAKE_SYSTEMCTL_LOG": str(self.systemctl_log),
                 "FAKE_SYSTEMCTL_STATE": "active",
                 "MIHOMO_MAX_NODES": "80",
+                "MIHOMO_PLUGIN_DATA_DIR": str(root / "plugin-data"),
             }
         )
 
@@ -176,6 +198,38 @@ exit 0
         completed, delay = self.run_cli("delay", "PROXY")
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(delay["results"], [{"name": "node-a", "delay": 42}])
+
+    def test_provider_list_and_update(self):
+        completed, snapshot = self.run_cli("providers")
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(snapshot["providers"][0]["name"], "airport")
+        self.assertEqual(snapshot["providers"][0]["subscription"]["total"], 1000)
+        completed, payload = self.run_cli("provider-update", "airport")
+        self.assertEqual(completed.returncode, 0)
+        request = next(item for item in self.server.requests if item[0] == "PUT" and item[1] == "/providers/proxies/airport")
+        self.assertEqual(request[0], "PUT")
+
+    def test_direct_add_list_sync_and_remove(self):
+        completed, added = self.run_cli("direct-add", " example.com ")
+        self.assertEqual(completed.returncode, 0)
+        self.assertTrue(added["configured"])
+        self.assertEqual(added["entry"]["value"], "example.com")
+
+        completed, listed = self.run_cli("direct-list")
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(len(listed["entries"]), 1)
+        provider = Path(self.env["MIHOMO_PLUGIN_DATA_DIR"]) / "direct-rules.yaml"
+        self.assertIn("DOMAIN-SUFFIX,example.com", provider.read_text(encoding="utf-8"))
+
+        completed, removed = self.run_cli("direct-remove", added["entry"]["id"])
+        self.assertEqual(completed.returncode, 0)
+        completed, listed = self.run_cli("direct-list")
+        self.assertEqual(listed["entries"], [])
+
+    def test_direct_rejects_invalid_input(self):
+        completed, payload = self.run_cli("direct-add", "not a domain")
+        self.assertNotEqual(completed.returncode, 0)
+        self.assertFalse(payload["ok"])
 
     def test_secret_is_returned_without_logging(self):
         completed, payload = self.run_cli("secret")

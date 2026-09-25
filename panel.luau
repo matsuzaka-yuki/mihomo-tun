@@ -8,10 +8,15 @@ local groupview = noctalia.state.get("group")
 local ipinfo = noctalia.state.get("ip")
 local delayinfo = noctalia.state.get("delay")
 local lastaction = noctalia.state.get("action")
+local providerinfo = noctalia.state.get("providers")
+local directinfo = noctalia.state.get("direct")
 
 local view_group = "PROXY"
+local view = "main"
 local pending = ""
 local nonce = 0
+local direct_input = ""
+local direct_input_rev = 0
 
 local MODES = { "rule", "global", "direct" }
 
@@ -88,6 +93,54 @@ local function section_title(text, trailing)
   }
   if trailing then table.insert(children, trailing) end
   return ui.row({ gap = 8, align = "center" }, children)
+end
+
+local function format_bytes(value)
+  local n = tonumber(value) or 0
+  local units = { "B", "KB", "MB", "GB", "TB" }
+  local index = 1
+  while n >= 1024 and index < #units do
+    n /= 1024
+    index += 1
+  end
+  if index == 1 then return string.format("%d %s", n, units[index]) end
+  return string.format("%.1f %s", n, units[index])
+end
+
+local function format_updated(value)
+  local text = tostring(value or "")
+  local date, clock = text:match("^(%d%d%d%d%-%d%d%-%d%d)T(%d%d:%d%d)")
+  if date and clock and not text:match("^0001%-") then
+    return tr("panel.updated_at", { time = date .. " " .. clock })
+  end
+  return tr("panel.never_updated")
+end
+
+local function page_button(label, page, glyph)
+  return ui.button({
+    key = "mihomo-page-" .. page,
+    text = label,
+    glyph = glyph,
+    variant = view == page and "primary" or "ghost",
+    controlSize = "sm",
+    fontSize = 12,
+    flexGrow = 1,
+    selected = view == page,
+    onClick = function()
+      view = page
+      if page == "subscriptions" then send("providers", nil, "providers") end
+      if page == "direct" then send("direct-list", nil, "direct") end
+      render()
+    end,
+  })
+end
+
+local function navigation()
+  return ui.row({ gap = 6, align = "stretch" }, {
+    page_button(tr("panel.nav_main"), "main", "layout-dashboard"),
+    page_button(tr("panel.nav_subscriptions"), "subscriptions", "stack-2"),
+    page_button(tr("panel.nav_direct"), "direct", "route"),
+  })
 end
 
 local function header(rows)
@@ -354,14 +407,30 @@ local function actions(rows)
     }),
     ui.row({ gap = 6, align = "stretch" }, {
       ui.button({
-        text = tr("panel.update_provider"),
-        glyph = "arrow-up-right",
+        text = tr("panel.nav_subscriptions"),
+        glyph = "stack-2",
         variant = common.variant,
         controlSize = common.controlSize,
         fontSize = common.fontSize,
         flexGrow = common.flexGrow,
         enabled = common.enabled,
-        onClick = function() send("update-provider") end,
+        onClick = function()
+          view = "subscriptions"
+          send("providers", nil, "providers")
+        end,
+      }),
+      ui.button({
+        text = tr("panel.nav_direct"),
+        glyph = "route",
+        variant = common.variant,
+        controlSize = common.controlSize,
+        fontSize = common.fontSize,
+        flexGrow = common.flexGrow,
+        enabled = common.enabled,
+        onClick = function()
+          view = "direct"
+          send("direct-list", nil, "direct")
+        end,
       }),
       ui.button({
         text = tr("panel.refresh"),
@@ -401,15 +470,304 @@ local function status_line(rows)
   end
 end
 
-function render()
+local function subscriptions_view()
   local rows = {}
-  header(rows)
-  ip_row(rows)
-  local mode = mode_row()
-  local group = group_row()
-  table.insert(rows, panel_card(group and { mode, group } or { mode }))
-  node_list(rows)
-  actions(rows)
+  local providers = type(providerinfo) == "table" and providerinfo.providers or nil
+  local provider_error = type(providerinfo) == "table" and providerinfo.error or ""
+  local update_all = ui.button({
+    text = tr("panel.update_all"),
+    glyph = "refresh",
+    variant = "secondary",
+    controlSize = "sm",
+    fontSize = 12,
+    enabled = pending == "" and providers ~= nil and #providers > 0,
+    onClick = function() send("provider-update", { "all" }, "provider") end,
+  })
+  table.insert(rows, panel_card({
+    section_title(tr("panel.subscriptions"), update_all),
+  }))
+
+  if providers == nil then
+    table.insert(rows, panel_card({
+      ui.row({ gap = 8, align = "center" }, {
+        ui.glyph({ name = "loader-2", size = 16, color = "tertiary" }),
+        ui.label({ text = tr("panel.loading"), fontSize = 13, color = "on_surface_variant" }),
+      }),
+    }, { flexGrow = 1 }))
+    return rows
+  end
+  if provider_error ~= "" then
+    table.insert(rows, panel_card({
+      ui.label({ text = tostring(provider_error), fontSize = 12, color = "error", maxLines = 3 }),
+    }))
+    return rows
+  end
+  if #providers == 0 then
+    table.insert(rows, panel_card({
+      ui.label({ text = tr("panel.no_providers"), fontSize = 13, color = "on_surface_variant" }),
+    }, { flexGrow = 1 }))
+    return rows
+  end
+
+  local cards = {}
+  for _, provider in ipairs(providers) do
+    local subscription = type(provider.subscription) == "table" and provider.subscription or {}
+    local used = (tonumber(subscription.upload) or 0) + (tonumber(subscription.download) or 0)
+    local total = tonumber(subscription.total) or 0
+    local expire = tonumber(subscription.expire) or 0
+    local children = {
+      ui.row({ gap = 8, align = "center" }, {
+        ui.column({ gap = 2, flexGrow = 1 }, {
+          ui.label({
+            text = tostring(provider.name or ""),
+            fontSize = 14,
+            fontWeight = "semibold",
+            color = "on_surface",
+            maxLines = 1,
+          }),
+          ui.label({
+            text = tr("panel.node_count", { count = tonumber(provider.node_count) or 0 }),
+            fontSize = 11,
+            color = "on_surface_variant",
+            maxLines = 1,
+          }),
+        }),
+        ui.button({
+          text = tr("panel.refresh"),
+          glyph = "refresh",
+          variant = "ghost",
+          controlSize = "sm",
+          fontSize = 11,
+          enabled = pending == "",
+          onClick = function()
+            send("provider-update", { tostring(provider.name or "") }, "provider")
+          end,
+        }),
+      }),
+      ui.label({
+        text = format_updated(provider.updated_at),
+        fontSize = 11,
+        color = "on_surface_variant",
+        maxLines = 1,
+      }),
+    }
+    if total > 0 then
+      table.insert(children, ui.progress({
+        progress = math.min(1, used / total),
+        height = 5,
+        radius = 3,
+        fill = used / total >= 0.85 and "error" or "primary",
+        track = "outline/0.22",
+      }))
+      table.insert(children, ui.label({
+        text = tr("panel.quota_used", { used = format_bytes(used), total = format_bytes(total) }),
+        fontSize = 11,
+        color = "on_surface",
+        maxLines = 1,
+      }))
+    else
+      table.insert(children, ui.label({
+        text = tr("panel.quota_unknown"),
+        fontSize = 11,
+        color = "on_surface_variant",
+        maxLines = 1,
+      }))
+    end
+    if expire > 0 then
+      table.insert(children, ui.label({
+        text = tr("panel.expires", { date = os.date("%Y-%m-%d", expire) }),
+        fontSize = 11,
+        color = expire <= os.time() and "error" or "on_surface_variant",
+        maxLines = 1,
+      }))
+    end
+    table.insert(cards, panel_card(children))
+  end
+  table.insert(rows, ui.scroll({ key = "mihomo-provider-scroll", flexGrow = 1, gap = 6 }, cards))
+  return rows
+end
+
+local function direct_view()
+  local rows = {}
+  local info = type(directinfo) == "table" and directinfo or {}
+  local entries = type(info.entries) == "table" and info.entries or nil
+  local configured = info.configured == true
+
+  local clear = ui.button({
+    text = tr("panel.clear_all"),
+    glyph = "trash",
+    variant = "ghost",
+    controlSize = "sm",
+    fontSize = 11,
+    enabled = pending == "" and entries ~= nil and #entries > 0,
+    onClick = function() send("direct-clear", nil, "direct") end,
+  })
+  table.insert(rows, panel_card({
+    section_title(tr("panel.direct_rules"), clear),
+    ui.label({
+      text = tr("panel.direct_help"),
+      fontSize = 12,
+      color = "on_surface_variant",
+      maxLines = 3,
+    }),
+    ui.row({ gap = 6, align = "stretch" }, {
+      ui.input({
+        key = "mihomo-direct-input-" .. tostring(direct_input_rev),
+        value = direct_input,
+        placeholder = tr("panel.direct_placeholder"),
+        fontSize = 12,
+        controlSize = "sm",
+        flexGrow = 1,
+        enabled = pending == "",
+        onChange = function(value) direct_input = tostring(value or "") end,
+        onSubmit = function(value)
+          direct_input = tostring(value or "")
+          if direct_input ~= "" then
+            local wanted = direct_input
+            direct_input = ""
+            direct_input_rev += 1
+            send("direct-add", { wanted }, "direct")
+          end
+        end,
+      }),
+      ui.button({
+        text = tr("panel.add_direct"),
+        glyph = "plus",
+        variant = "primary",
+        controlSize = "sm",
+        fontSize = 12,
+        enabled = pending == "" and direct_input ~= "",
+        onClick = function()
+          if direct_input ~= "" then
+            local wanted = direct_input
+            direct_input = ""
+            direct_input_rev += 1
+            send("direct-add", { wanted }, "direct")
+          end
+        end,
+      }),
+    }),
+  }))
+
+  if not configured then
+    table.insert(rows, ui.row({
+      gap = 8,
+      paddingH = 10,
+      paddingV = 9,
+      fill = "tertiary/0.12",
+      border = "tertiary/0.38",
+      borderWidth = 1,
+      radius = 10,
+      align = "center",
+    }, {
+      ui.glyph({ name = "info-circle", size = 16, color = "tertiary" }),
+      ui.label({
+        text = tr("panel.direct_not_configured"),
+        fontSize = 12,
+        color = "tertiary",
+        flexGrow = 1,
+        maxLines = 2,
+      }),
+      ui.button({
+        text = tr("panel.copy_setup"),
+        glyph = "copy",
+        variant = "secondary",
+        controlSize = "sm",
+        fontSize = 11,
+        enabled = type(info.setup_command) == "string" and info.setup_command ~= "",
+        onClick = function()
+          local copied = noctalia.copyToClipboard(info.setup_command or "", "text/plain;charset=utf-8")
+          if copied then
+            noctalia.notify(tr("panel.title"), tr("panel.setup_copied"))
+          else
+            noctalia.notifyError(tr("panel.title"), tr("panel.secret_failed"))
+          end
+        end,
+      }),
+    }))
+  else
+    table.insert(rows, ui.row({ gap = 7, paddingH = 10, paddingV = 7,
+                                fill = "primary/0.10", border = "primary/0.28",
+                                borderWidth = 1, radius = 9, align = "center" }, {
+      ui.glyph({ name = "circle-check", size = 15, color = "primary" }),
+      ui.label({ text = tr("panel.direct_configured"), fontSize = 12, color = "primary", maxLines = 1 }),
+    }))
+  end
+
+  if entries == nil then
+    table.insert(rows, panel_card({
+      ui.label({ text = tr("panel.loading"), fontSize = 13, color = "on_surface_variant" }),
+    }, { flexGrow = 1 }))
+    return rows
+  end
+  if #entries == 0 then
+    table.insert(rows, panel_card({
+      ui.label({ text = tr("panel.direct_empty"), fontSize = 13, color = "on_surface_variant" }),
+    }, { flexGrow = 1 }))
+    return rows
+  end
+
+  local items = {}
+  for _, entry in ipairs(entries) do
+    local kind = entry.kind == "domain" and "DOMAIN" or "IP"
+    table.insert(items, ui.row({
+      key = "mihomo-direct-" .. tostring(entry.id or entry.value or ""),
+      gap = 8,
+      align = "center",
+      paddingH = 10,
+      paddingV = 7,
+      fill = "surface/0.66",
+      border = "outline/0.48",
+      borderWidth = 1,
+      radius = 8,
+    }, {
+      ui.label({
+        text = kind,
+        fontSize = 10,
+        fontWeight = "bold",
+        color = kind == "DOMAIN" and "tertiary" or "secondary",
+        maxLines = 1,
+      }),
+      ui.label({
+        text = tostring(entry.display or entry.value or ""),
+        fontSize = 13,
+        color = "on_surface",
+        flexGrow = 1,
+        maxLines = 1,
+      }),
+      ui.button({
+        glyph = "trash",
+        tooltip = tr("panel.remove"),
+        variant = "ghost",
+        controlSize = "sm",
+        enabled = pending == "",
+        onClick = function()
+          send("direct-remove", { tostring(entry.id or "") }, "direct")
+        end,
+      }),
+    }))
+  end
+  table.insert(rows, ui.scroll({ key = "mihomo-direct-scroll", flexGrow = 1, gap = 5 }, items))
+  return rows
+end
+
+function render()
+  local rows = { navigation() }
+  if view == "subscriptions" then
+    local subscription_rows = subscriptions_view()
+    for _, row in ipairs(subscription_rows) do table.insert(rows, row) end
+  elseif view == "direct" then
+    local direct_rows = direct_view()
+    for _, row in ipairs(direct_rows) do table.insert(rows, row) end
+  else
+    header(rows)
+    ip_row(rows)
+    local mode = mode_row()
+    local group = group_row()
+    table.insert(rows, panel_card(group and { mode, group } or { mode }))
+    node_list(rows)
+    actions(rows)
+  end
   status_line(rows)
   panel.render(ui.column({ flexGrow = 1, gap = 10, padding = 14, align = "stretch" }, rows))
 end
@@ -418,6 +776,8 @@ local function refresh()
   send("status", nil, "status")
   send("group", { view_group }, "group")
   send("ip", nil, "ip")
+  send("providers", nil, "providers")
+  send("direct-list", nil, "direct")
 end
 
 function onOpen(context)
@@ -427,6 +787,8 @@ end
 
 function onClose()
   pending = ""
+  view = "main"
+  direct_input = ""
 end
 
 noctalia.state.watch("detail", function(v) detail = v; pending = ""; render() end)
@@ -435,6 +797,8 @@ noctalia.state.watch("group", function(v) groupview = v; pending = ""; render() 
 noctalia.state.watch("ip", function(v) ipinfo = v; pending = ""; render() end)
 noctalia.state.watch("delay", function(v) delayinfo = v; pending = ""; render() end)
 noctalia.state.watch("action", function(v) lastaction = v; render() end)
+noctalia.state.watch("providers", function(v) providerinfo = v; pending = ""; render() end)
+noctalia.state.watch("direct", function(v) directinfo = v; pending = ""; render() end)
 
 function update()
   noctalia.setUpdateInterval(5000)

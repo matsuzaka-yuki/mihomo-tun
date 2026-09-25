@@ -9,6 +9,7 @@
 local PLUGIN_DIR = noctalia.pluginDir()
 noctalia.log("mihomo-tun: service 已加载，脚本 = " .. PLUGIN_DIR .. "/scripts/mihomo-ctl.py")
 local SCRIPT = PLUGIN_DIR .. "/scripts/mihomo-ctl.py"
+local PLUGIN_DATA_DIR = noctalia.pluginDataDir() or ""
 
 local function q(v)
   return "'" .. tostring(v == nil and "" or v):gsub("'", "'\\''") .. "'"
@@ -24,6 +25,8 @@ local function base_cmd()
   return "MIHOMO_SECRET_FILE=" .. q(cfg("secret_file", "/etc/mihomo/.controller-secret"))
     .. " MIHOMO_CONTROLLER=" .. q(cfg("controller", "http://127.0.0.1:9090"))
     .. " MIHOMO_UNIT=" .. q(cfg("unit", "mihomo.service"))
+    .. " MIHOMO_CONFIG_FILE=" .. q(cfg("config_file", "/etc/mihomo/config.yaml"))
+    .. " MIHOMO_PLUGIN_DATA_DIR=" .. q(PLUGIN_DATA_DIR)
     .. " MIHOMO_MAX_NODES=" .. tostring(tonumber(cfg("max_nodes", 40)) or 40)
     .. " " .. q(cfg("python_bin", "python3")) .. " " .. q(SCRIPT)
 end
@@ -39,7 +42,7 @@ local function log_state(data)
 end
 
 local inflight = 0
-local MAX_INFLIGHT = 3   -- 防止连点导致进程堆积
+local MAX_INFLIGHT = 6   -- 允许一次刷新并行拉取状态、订阅和直连规则
 
 local function run(args, key, on_done)
   if inflight >= MAX_INFLIGHT then
@@ -107,7 +110,39 @@ local function dispatch(method, args)
       run("status", "detail")
     end)
   elseif method == "update-provider" then
-    run("update-provider " .. q(args[1] or "airport"), "action", after_action)
+    run("provider-update " .. q(args[1] or "airport"), "action", function(d)
+      notify_result(d)
+      run("providers", "providers")
+    end)
+  elseif method == "providers" then
+    run("providers", "providers")
+  elseif method == "provider-update" then
+    run("provider-update " .. q(args[1] or "all"), "action", function(d)
+      notify_result(d)
+      run("providers", "providers")
+    end)
+  elseif method == "direct-list" then
+    run("direct-list", "direct")
+  elseif method == "direct-add" then
+    run("direct-add " .. q(args[1] or ""), "action", function(d)
+      notify_result(d)
+      run("direct-list", "direct")
+    end)
+  elseif method == "direct-remove" then
+    run("direct-remove " .. q(args[1] or ""), "action", function(d)
+      notify_result(d)
+      run("direct-list", "direct")
+    end)
+  elseif method == "direct-clear" then
+    run("direct-clear", "action", function(d)
+      notify_result(d)
+      run("direct-list", "direct")
+    end)
+  elseif method == "direct-sync" then
+    run("direct-sync", "action", function(d)
+      notify_result(d)
+      run("direct-list", "direct")
+    end)
   elseif method == "secret" then
     -- 面板的"复制密钥"按钮：结果里带密钥，所以复制后立刻清掉 state，别留在内存里
     run("secret", "", function(d)   -- key 传空：密钥不进共享 state
@@ -128,6 +163,8 @@ local function dispatch(method, args)
   elseif method == "refresh" then
     run("watch", "mihomo")
     run("status", "detail")
+    run("providers", "providers")
+    run("direct-list", "direct")
   else
     noctalia.state.set("action", { ok = false, error = "未知动作：" .. tostring(method) })
   end

@@ -35,6 +35,10 @@
     "unit": {
       "label": "systemd unit",
       "description": "systemd unit to toggle (default mihomo.service)"
+    },
+    "config_file": {
+      "label": "Mihomo config file",
+      "description": "Path used by the optional direct-rule setup helper"
     }
   },
   "colors": {
@@ -81,6 +85,29 @@
     "web_panel": "Web panel",
     "copy_secret": "Copy secret",
     "update_provider": "Update subscription",
+    "nav_main": "Overview",
+    "nav_subscriptions": "Subscriptions",
+    "nav_direct": "Direct rules",
+    "subscriptions": "Subscriptions",
+    "update_all": "Update all",
+    "updated_at": "Updated {time}",
+    "never_updated": "Never updated",
+    "node_count": "{count} nodes",
+    "quota_used": "{used} / {total}",
+    "quota_unknown": "Quota unavailable",
+    "expires": "Expires {date}",
+    "no_providers": "No HTTP subscription providers are configured",
+    "direct_rules": "Domestic direct rules",
+    "direct_help": "Domains and IPs added here are matched before proxy rules and sent DIRECT.",
+    "direct_placeholder": "example.com or 203.0.113.7/24",
+    "add_direct": "Add direct rule",
+    "direct_empty": "No direct rules yet",
+    "direct_configured": "Direct-rule provider is active",
+    "direct_not_configured": "One-time setup is still required",
+    "copy_setup": "Copy setup command",
+    "setup_copied": "One-time setup command copied",
+    "clear_all": "Clear all",
+    "remove": "Remove",
     "working": "Working…",
     "copied": "Controller secret copied to clipboard",
     "secret_failed": "Could not read the controller secret"

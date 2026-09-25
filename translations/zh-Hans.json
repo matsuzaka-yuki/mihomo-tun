@@ -35,6 +35,10 @@
     "unit": {
       "label": "systemd 单元",
       "description": "要启停的 systemd 单元（默认 mihomo.service）"
+    },
+    "config_file": {
+      "label": "Mihomo 配置文件",
+      "description": "可选的直连规则首次配置工具使用的路径"
     }
   },
   "colors": {
@@ -81,6 +85,29 @@
     "web_panel": "Web 面板",
     "copy_secret": "复制密钥",
     "update_provider": "更新订阅",
+    "nav_main": "总览",
+    "nav_subscriptions": "订阅",
+    "nav_direct": "直连规则",
+    "subscriptions": "订阅",
+    "update_all": "全部更新",
+    "updated_at": "更新时间 {time}",
+    "never_updated": "尚未更新",
+    "node_count": "{count} 个节点",
+    "quota_used": "{used} / {total}",
+    "quota_unknown": "无法获取流量额度",
+    "expires": "到期 {date}",
+    "no_providers": "没有配置 HTTP 订阅提供者",
+    "direct_rules": "国内直连规则",
+    "direct_help": "这里写入的域名和 IP 会在代理规则之前匹配并直接走国内网络。",
+    "direct_placeholder": "example.com 或 203.0.113.7/24",
+    "add_direct": "添加直连规则",
+    "direct_empty": "还没有直连规则",
+    "direct_configured": "直连规则提供器已生效",
+    "direct_not_configured": "还需要执行一次管理员配置",
+    "copy_setup": "复制配置命令",
+    "setup_copied": "管理员配置命令已复制",
+    "clear_all": "全部清空",
+    "remove": "删除",
     "working": "处理中…",
     "copied": "已把控制器密钥复制到剪贴板",
     "secret_failed": "读不到控制器密钥"
